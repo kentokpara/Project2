@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>My first three.js app</title>
+		<style>
+			body { margin: 0px; }
+		</style>
+	</head>
+	<body>
+		<style>
+			body {
+					margin: 0px;
+					}
+			canvas {
+					display: block;
+					}
+			input {
+					position: absolute;
+					}
+			div{
+				color: brown;
+				font-weight: bold;
+				font-size: large;
+				position: absolute;
+			}
+			p{
+				padding: 3px;
+				margin: 3px;
+			}
+		</style>
+		<div>Ambient Light Control
+			<input id = "slider" type="range" min="1" max="100" value="50">
+			<p>WASD = Move within the scene</p>
+			<p>O or P = OrthographicCamera or PerspectiveCamera</p>
+			<p>R,T,L = RightLight, TopLight, LeftLight</p>
+			<p>MouseHover = SpotLight </p>
+			<p> <= => = Pan Camera </p>
+			<p>1,2,3,4,5 = Transform Polygons</p>
+			<p>X and F = Smoth and Flat Shading</p>
+			<p>M = Move Light Continuously on the Y axis.</p>
+		</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r126/three.min.js"></script>
+    <script>
+var kb={};
+var keyboard = {};
+var player = { height:1.8, speed:0.2, turnSpeed:Math.PI*0.02 };
+var width = 44;
+var height = 12;
+var camActive = false;
+var ballMat,coneMat,meshMat,tetMat,cycMat;
+var flat;
+var countT,countR,countL = false;
+var moveL = true;
+var amb;
+var projector,mouse={ x: 0, y: 0 },ray,mLight;
+
+//Scene
+var scene = new THREE.Scene();
+var pcam = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 1, 1000);
+pcam.position.set(1, 2, -10);
+pcam.lookAt(scene.position);
+var ocam = new THREE.OrthographicCamera( width / - 2, width / 2, height / 2, height / - 2, 1, 1000 );
+ocam.position.set(1, 1, -9);
+ocam.lookAt(scene.position);
+
+//light
+var slider
+var slide = 0.25;
+const colorT = 'white';
+const colorR = 'red';
+const colorL = 'blue';
+const intensity = 2;
+var intensity2 = slide;
+var amb = new THREE.AmbientLight('white',intensity2);
+const lightT = new THREE.PointLight(colorT, intensity);
+const lightR = new THREE.PointLight(colorR, intensity);
+const lightL = new THREE.PointLight(colorL, intensity);
+lightL.castShadow = true;
+lightR.castShadow = true;
+lightT.castShadow = true;
+
+//lightT.visible = false;
+const helperT = new THREE.PointLightHelper(lightT, 0.09);
+const helperR = new THREE.PointLightHelper(lightR, 0.09);
+const helperL = new THREE.PointLightHelper(lightL, 0.09);
+lightT.position.set(0, 9, 5);
+lightR.position.set(30, 4, 9);
+lightL.position.set(-48, 6, 9);
+scene.add(lightT);
+scene.add(lightR);
+scene.add(lightL);
+scene.add(amb);
+scene.add(helperT);
+scene.add(helperR);
+scene.add(helperL);
+
+
+var renderer = new THREE.WebGLRenderer({antialias : true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+renderer.shadowMap.enabled = true;
+
+init()
+
+function init(){
+var plane = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000, 10, 10), new THREE.MeshPhongMaterial({
+  color: 'grey',
+}));
+plane.castShadow = true;
+plane.receiveShadow = true;
+plane.position.y = -0.5
+plane.rotation.x = -Math.PI * 0.5;
+scene.add(plane);
+
+var ballGeo = new THREE.SphereGeometry(0.5, 16, 8), 
+ballMat =new THREE.MeshPhongMaterial({
+  color: '#500003', flatShading:false,specular: 'white', shininess: '100'
+});
+var ball = new THREE.Mesh(ballGeo,ballMat)
+ball.castShadow = true;
+ball.receiveShadow =true;
+ball.position.x =1;
+ball.position.y = 3;
+scene.add(ball);
+//Cube
+meshGeo = new THREE.BoxGeometry(2,2,2)
+meshMat = new THREE.MeshPhongMaterial({color:'teal', flatShading : false,specular: 'white', shininess: '100'})
+var mesh = new THREE.Mesh(meshGeo,meshMat)
+mesh.position.x = 5;
+mesh.castShadow = true;
+mesh.receiveShadow = true;
+mesh.position.y = 2;
+	scene.add(mesh);
+ //Cone
+var mesh2 = new THREE.ConeGeometry( 1, 2, 64 );
+var coneMat = new THREE.MeshPhongMaterial( {color: '#33f20d',flatShading : false, specular: 'white', shininess: '100'});
+var cone = new THREE.Mesh( mesh2, coneMat );
+cone.castShadow = true;
+cone.receiveShadow = true;
+cone.position.x= 12;
+cone.position.y= 2.3;
+scene.add( cone );
+
+//Cylinder
+var mesh3 = new THREE.CylinderGeometry(2,2,2,12);
+var cycMat = new THREE.MeshPhongMaterial( {color: '#e800ff', flatShading : false, specular: 'white', shininess: '100' } );
+var cylinder = new THREE.Mesh( mesh3, cycMat );
+cylinder.castShadow = true;
+cylinder.receiveShadow = true;
+cylinder.position.x= -7;
+cylinder.position.y= 2;
+scene.add( cylinder );
+//Tetrahedron
+var mesh5 = new THREE.TetrahedronGeometry(2);
+var tetMat = new THREE.MeshPhongMaterial( {color: '#985603', flatShading : false, specular: 'white', shininess: '100'} );
+var Tetra = new THREE.Mesh( mesh5, tetMat );
+Tetra.castShadow = true;
+Tetra.receiveShadow = true;
+Tetra.position.x= -17;
+Tetra.position.y= 2;
+scene.add( Tetra );
+
+
+
+var clock = new THREE.Clock();
+var time = 0;
+var delta = 0;
+
+
+
+
+render()
+
+function render() {
+  requestAnimationFrame(render);
+
+  // F key
+  // Keyboard movement inputs
+	if(keyboard[87]){ // W key
+		ocam.position.x -= Math.sin(ocam.rotation.y) * player.speed;
+		ocam.position.z -= -Math.cos(ocam.rotation.y) * player.speed;
+		pcam.position.x -= Math.sin(pcam.rotation.y) * player.speed;
+		pcam.position.z -= -Math.cos(pcam.rotation.y) * player.speed;
+	}
+	if(keyboard[83]){ // S key
+		ocam.position.x += Math.sin(ocam.rotation.y) * player.speed;
+		ocam.position.z += -Math.cos(ocam.rotation.y) * player.speed;
+		pcam.position.x += Math.sin(pcam.rotation.y) * player.speed;
+		pcam.position.z += -Math.cos(pcam.rotation.y) * player.speed;
+	}
+	if(keyboard[65]){ // A key
+		// Redirect motion by 90 degrees
+		ocam.position.x += Math.sin(ocam.rotation.y + Math.PI/2) * player.speed;
+		ocam.position.z += -Math.cos(ocam.rotation.y + Math.PI/2) * player.speed;
+		pcam.position.x += Math.sin(pcam.rotation.y + Math.PI/2) * player.speed;
+		pcam.position.z += -Math.cos(pcam.rotation.y + Math.PI/2) * player.speed;
+	}
+	if(keyboard[68]){ // D key
+		ocam.position.x += Math.sin(ocam.rotation.y - Math.PI/2) * player.speed;
+		ocam.position.z += -Math.cos(ocam.rotation.y - Math.PI/2) * player.speed;
+		pcam.position.x += Math.sin(pcam.rotation.y - Math.PI/2) * player.speed;
+		pcam.position.z += -Math.cos(pcam.rotation.y - Math.PI/2) * player.speed;
+	}
+	
+	// Keyboard turn inputs
+	if(keyboard[37]){ // left arrow key
+		ocam.rotation.y -= player.turnSpeed;
+		pcam.rotation.y -= player.turnSpeed;
+	}
+	if(keyboard[39]){ // right arrow key
+		ocam.rotation.y += player.turnSpeed;
+		pcam.rotation.y += player.turnSpeed;
+	}
+	//Shadding
+	function shade(){
+	if(keyboard[70]){ // F
+		ballMat.flatShading = true;
+		ballMat.needsUpdate = true;
+
+		coneMat.flatShading = true;
+		coneMat.needsUpdate = true;
+
+		meshMat.flatShading = true;
+		meshMat.needsUpdate = true;
+
+		tetMat.flatShading = true;
+		tetMat.needsUpdate = true;
+
+		cycMat.flatShading = true;
+		cycMat.needsUpdate = true
+
+
+		
+		keyboard[70] = false;
+	}
+	if (keyboard[88]){// X
+		ballMat.flatShading = false;
+		ballMat.needsUpdate = true;
+
+		coneMat.flatShading = false;
+		coneMat.needsUpdate = true;
+
+		meshMat.flatShading = false;
+		meshMat.needsUpdate = true;
+
+		tetMat.flatShading = false;
+		tetMat.needsUpdate = true;
+
+		cycMat.flatShading = false;
+		cycMat.needsUpdate = true
+
+		
+		keyboard[88] = false;
+	}	
+
+}
+ shade()
+
+ function lightPosition() {
+	
+	if (keyboard[84]){// T
+		
+		if(countT){
+		lightT.visible = true;
+		countT = false;
+		}else{
+			lightT.visible = false;
+			countT = true;
+		}
+		
+		keyboard[84] = false
+
+
+	}
+
+	if (keyboard[76]){// L
+		if(countL){
+		lightL.visible = true;
+		countL = false;
+		}else{
+			lightL.visible = false;
+			countL = true;
+		}
+		
+		keyboard[76] = false
+
+	}
+
+	if (keyboard[82]){// R
+		if(countR){
+		lightR.visible = true;
+		countR = false;
+		}else{
+			lightR.visible = false;
+			countR = true;
+		}
+		
+		keyboard[82] = false
+
+	}
+	}
+	
+	lightPosition()
+
+	
+	if (kb[77]){// M
+		lightT.position.y = 12 * Math.cos(Date.now() / 360);
+	}
+
+
+
+  //Translate Keyboard inputs
+  if(kb[49]){ // 
+  mesh.rotation.x += 0.01;
+	mesh.rotation.y += 0.02;
+  }
+  if(kb[50]){ //2
+  delta = clock.getDelta();
+  time += delta;
+  ball.rotation.x = time * 2;
+  ball.position.y = 0.5 + Math.abs(Math.sin(time * 3)) * 2;
+  ball.position.z = Math.cos(time) * 6;
+  }
+  if(kb[51]){ //3
+  delta = clock.getDelta();
+  time += delta;
+  //cone.rotation.x = time * 4;
+  cone.position.x = 12 + Math.abs(Math.sin(time * 3)) * 2;
+  }
+  if(kb[52]){ //4
+  delta = clock.getDelta();
+  time += delta;
+  cylinder.scale.y= 0.5 + Math.abs(Math.sin(time * 3)) * 2;
+  }
+  if(kb[53]){ //5
+  delta = clock.getDelta();
+  time += delta;
+  Tetra.scale.x= 0.5 + Math.abs(Math.sin(time * 2)) * 0.7;
+  Tetra.scale.y= 0.5 + Math.abs(Math.sin(time * 2)) * 0.7;
+  Tetra.scale.z= 0.5 + Math.abs(Math.sin(time * 2)) * 0.7;
+  }
+
+  if ( keyboard[79])
+	{  camActive = true;  }
+  if ( keyboard[80] )
+	{  camActive = false;  }
+
+if (camActive)
+	{ 
+		renderer.render( scene, ocam );  }
+else
+	{  renderer.render( scene, pcam );  }
+
+	}
+
+function keyDown(event){
+  kb[event.keyCode] = true;
+	keyboard[event.keyCode] = true;
+}
+
+function keyUp(event){
+	keyboard[event.keyCode] = false;
+  kb[event.keyCode] = true;
+}
+
+//AMB SLIDER
+function amb(event) {
+	scene.remove(amb);
+	slide = event.target.value/200;
+	amb = new THREE.AmbientLight('white',slide);
+	scene.add(amb);
+}
+
+//Mouse Light
+function onMouseMove(event) {
+	scene.remove(mLight);
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+	mLight = new THREE.SpotLight(colorT, 2);
+	const helperM = new THREE.PointLightHelper(mLight, 0.09);
+	mLight.position.set(mouse.x,mouse.y,-2)
+	scene.add(mLight)
+	//scene.add(helperM);
+
+}
+const raycaster = new THREE.Raycaster();
+raycaster.setFromCamera( mouse, pcam );
+slider = document.getElementById("slider")
+slider.addEventListener("input",amb);
+window.addEventListener( 'mousemove', onMouseMove, false );
+window.addEventListener('keydown', keyDown);
+window.addEventListener('keyup', keyUp);
+
+}
+</script>
+	</body>
+</html>
